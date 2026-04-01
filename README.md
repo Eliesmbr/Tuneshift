@@ -4,12 +4,14 @@
 
 No account needed. No data stored. Just upload, connect, and migrate.
 
-<br>
+<p align="center">
+  <img src="assets/screenshot.png" alt="Tuneshift screenshot" width="700">
+</p>
 
 ## How it works
 
 ```
-Export playlists from Spotify  →  Upload CSV  →  Connect Tidal  →  Done
+Export playlists from Spotify  ->  Upload CSV  ->  Connect Tidal  ->  Done
          (via Exportify)
 ```
 
@@ -17,20 +19,16 @@ Export playlists from Spotify  →  Upload CSV  →  Connect Tidal  →  Done
 2. Upload the CSV files to Tuneshift
 3. Select which playlists to migrate
 4. Connect your Tidal account
-5. Hit migrate — tracks are matched by ISRC, playlists created on Tidal
-
-<br>
+5. Hit migrate - tracks are matched by ISRC, playlists created on Tidal
 
 ## Track matching
 
 Tuneshift uses a two-step matching strategy:
 
-- **ISRC lookup** — Most tracks have an International Standard Recording Code. This gives exact matches.
-- **Fuzzy search** — Falls back to searching by track name + artist with smart normalization (strips remaster tags, handles spelling variations, duration matching).
+- **ISRC lookup** - Most tracks have an International Standard Recording Code. This gives exact matches.
+- **Fuzzy search** - Falls back to searching by track name + artist with smart normalization (strips remaster tags, handles spelling variations, duration matching).
 
 In testing, **91/91 tracks** matched successfully with ISRC data from Exportify.
-
-<br>
 
 ## Self-hosting
 
@@ -66,15 +64,13 @@ docker compose up --build -d
 
 The app runs on port `8080`. Put a reverse proxy (Caddy, Nginx) in front for HTTPS.
 
-<br>
-
 ## Architecture
 
 ```
 ┌──────────────────────────────────────┐
 │           Docker Container           │
 │                                      │
-│   React SPA  ←──  Go Backend :8080   │
+│   React SPA  <-──  Go Backend :8080   │
 │   (static)       │                   │
 │                  API + OAuth + SSE   │
 └──────────────────┼───────────────────┘
@@ -89,25 +85,19 @@ The app runs on port `8080`. Put a reverse proxy (Caddy, Nginx) in front for HTT
 - **Progress:** Server-Sent Events (SSE) for real-time updates
 - **Image size:** ~15 MB
 
-<br>
-
 ## Security
 
-- No database, no user accounts — fully stateless
+- No database, no user accounts - fully stateless
 - OAuth tokens encrypted in HTTP-only cookies, never exposed to JavaScript
-- PKCE flow — no client secret needed
+- PKCE flow - no client secret needed
 - CSRF protection via OAuth state parameter + SameSite cookies
 - Rate limiting on all API endpoints
 - Container runs as non-root user
 - CSV files parsed in memory, auto-deleted after 30 minutes
 
-<br>
-
 ## Why not use the Spotify API directly?
 
 Since February 2026, Spotify requires Premium for API access and limits development apps to 5 users. Extended quota mode is only available to companies with 250k+ monthly active users. Using Exportify's CSV export is the only viable path for a free, public tool.
-
-<br>
 
 ## Tech stack
 
@@ -120,8 +110,6 @@ Since February 2026, Spotify requires Premium for API access and limits developm
 | Encryption | AES-256-GCM |
 | Progress | Server-Sent Events |
 | Matching | ISRC + fuzzy search |
-
-<br>
 
 ## License
 
