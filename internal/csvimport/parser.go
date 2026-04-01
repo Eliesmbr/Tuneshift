@@ -5,7 +5,6 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
-	"log"
 	"strconv"
 	"strings"
 )
@@ -26,48 +25,15 @@ type Playlist struct {
 	Tracks []Track `json:"tracks"`
 }
 
-// column indices we care about
-type columnMap struct {
-	trackName   int
-	artistNames int
-	albumName   int
-	durationMS  int
-	isrc        int
-}
-
-func findColumns(header []string) (*columnMap, error) {
-	cm := &columnMap{
-		trackName:   -1,
-		artistNames: -1,
-		albumName:   -1,
-		durationMS:  -1,
-		isrc:        -1,
-	}
-
-	for i, col := range header {
-		switch strings.TrimSpace(col) {
-		case "Track Name":
-			cm.trackName = i
-		case "Artist Name(s)":
-			cm.artistNames = i
-		case "Album Name":
-			cm.albumName = i
-		case "Track Duration (ms)":
-			cm.durationMS = i
-		case "ISRC":
-			cm.isrc = i
-		}
-	}
-
-	if cm.trackName == -1 {
-		return nil, fmt.Errorf("missing required column 'Track Name' — is this an Exportify CSV?")
-	}
-	if cm.artistNames == -1 {
-		return nil, fmt.Errorf("missing required column 'Artist Name(s)'")
-	}
-
-	return cm, nil
-}
+// Exportify CSV column indices (fixed order regardless of language)
+const (
+	colTrackName   = 1
+	colArtistNames = 3
+	colAlbumName   = 5
+	colDurationMS  = 12
+	colISRC        = 16
+	minColumns     = 17
+)
 
 // ParseCSV parses an Exportify CSV and returns the tracks.
 // playlistName is provided by the caller (derived from filename).
@@ -86,11 +52,8 @@ func ParseCSV(r io.Reader, playlistName string) (*Playlist, error) {
 		return nil, fmt.Errorf("failed to read CSV header: %w", err)
 	}
 
-	log.Printf("CSV header (%d cols): %q", len(header), header)
-
-	cols, err := findColumns(header)
-	if err != nil {
-		return nil, err
+	if len(header) < minColumns {
+		return nil, fmt.Errorf("expected at least %d columns, got %d — is this an Exportify CSV?", minColumns, len(header))
 	}
 
 	playlist := &Playlist{
@@ -105,26 +68,18 @@ func ParseCSV(r io.Reader, playlistName string) (*Playlist, error) {
 		if err != nil {
 			continue // skip malformed rows
 		}
-
-		track := Track{}
-
-		if cols.trackName >= 0 && cols.trackName < len(record) {
-			track.TrackName = record[cols.trackName]
-		}
-		if cols.artistNames >= 0 && cols.artistNames < len(record) {
-			track.ArtistNames = record[cols.artistNames]
-		}
-		if cols.albumName >= 0 && cols.albumName < len(record) {
-			track.AlbumName = record[cols.albumName]
-		}
-		if cols.durationMS >= 0 && cols.durationMS < len(record) {
-			track.DurationMS, _ = strconv.Atoi(record[cols.durationMS])
-		}
-		if cols.isrc >= 0 && cols.isrc < len(record) {
-			track.ISRC = record[cols.isrc]
+		if len(record) < minColumns {
+			continue
 		}
 
-		// Skip empty rows
+		track := Track{
+			TrackName:   record[colTrackName],
+			ArtistNames: record[colArtistNames],
+			AlbumName:   record[colAlbumName],
+			ISRC:        record[colISRC],
+		}
+		track.DurationMS, _ = strconv.Atoi(record[colDurationMS])
+
 		if track.TrackName == "" {
 			continue
 		}
