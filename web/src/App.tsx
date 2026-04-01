@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { Header } from "./components/layout/Header";
 import { StepIndicator } from "./components/layout/StepIndicator";
+import { HeroAnimation } from "./components/landing/HeroAnimation";
+import { SourceSelector } from "./components/landing/SourceSelector";
 import { CSVUpload } from "./components/upload/CSVUpload";
+import { PlaylistPreview } from "./components/upload/PlaylistPreview";
 import { SelectionPanel } from "./components/library/SelectionPanel";
 import { ConnectButton } from "./components/auth/ConnectButton";
 import { MigrationProgressView } from "./components/migration/MigrationProgress";
 import { MigrationSummary } from "./components/migration/MigrationSummary";
+import { ToastContainer, toast } from "./components/ui/Toast";
 import { Card } from "./components/ui/Card";
 import { Button } from "./components/ui/Button";
 import { useAuth } from "./hooks/useAuth";
@@ -13,7 +17,6 @@ import { useMigration } from "./hooks/useMigration";
 import { api } from "./api/client";
 import type { Step, UploadedPlaylist } from "./types";
 
-// Persist upload state across OAuth redirects
 const STORAGE_KEY = "tuneshift_upload";
 
 interface PersistedState {
@@ -21,6 +24,7 @@ interface PersistedState {
   playlists: UploadedPlaylist[];
   totalTracks: number;
   selectedPlaylists: string[];
+  sourceSelected: boolean;
 }
 
 function saveState(state: PersistedState) {
@@ -44,18 +48,16 @@ function clearState() {
 export default function App() {
   const auth = useAuth();
   const migration = useMigration();
-
-  // Restore state from sessionStorage (survives OAuth redirect)
   const restored = loadState();
 
   const [step, setStep] = useState<Step>("upload");
+  const [sourceSelected, setSourceSelected] = useState(restored?.sourceSelected ?? false);
   const [uploading, setUploading] = useState(false);
   const [uploadSessionId, setUploadSessionId] = useState<string | null>(restored?.uploadSessionId ?? null);
   const [playlists, setPlaylists] = useState<UploadedPlaylist[]>(restored?.playlists ?? []);
   const [totalTracks, setTotalTracks] = useState(restored?.totalTracks ?? 0);
   const [selectedPlaylists, setSelectedPlaylists] = useState<string[]>(restored?.selectedPlaylists ?? []);
 
-  // Determine step from state
   useEffect(() => {
     if (auth.loading) return;
     if (migration.done) {
@@ -87,14 +89,16 @@ export default function App() {
       setUploadSessionId(result.session_id);
       setPlaylists(result.playlists);
       setTotalTracks(result.total_tracks);
+      toast(`${result.playlists.length} playlist${result.playlists.length !== 1 ? "s" : ""} loaded`, "success");
       saveState({
         uploadSessionId: result.session_id,
         playlists: result.playlists,
         totalTracks: result.total_tracks,
         selectedPlaylists: [],
+        sourceSelected: true,
       });
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Upload failed");
+      toast(err instanceof Error ? err.message : "Upload failed", "error");
     } finally {
       setUploading(false);
     }
@@ -109,6 +113,7 @@ export default function App() {
           playlists,
           totalTracks,
           selectedPlaylists: names,
+          sourceSelected: true,
         });
       }
     },
@@ -139,68 +144,82 @@ export default function App() {
 
   return (
     <div className="min-h-screen">
-      <Header />
+      <Header onLogoClick={handleStartOver} />
+      <ToastContainer />
       <main className="mx-auto max-w-2xl px-6 py-8">
         <StepIndicator current={step} />
 
         {/* Step 1: Upload CSV */}
         {step === "upload" && (
           <div className="space-y-8">
-            <div className="text-center">
-              <h2 className="text-3xl font-bold mb-3">
-                Move your music to{" "}
-                <span className="bg-gradient-to-r from-spotify-green to-tidal-blue bg-clip-text text-transparent">
-                  Tidal
-                </span>
-              </h2>
-              <p className="text-surface-200 max-w-md mx-auto">
-                Export your Spotify playlists with{" "}
-                <a
-                  href="https://exportify.app"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-spotify-green hover:underline"
-                >
-                  Exportify
-                </a>{" "}
-                and upload the CSV files here to transfer them to Tidal.
-              </p>
-            </div>
-            <CSVUpload onUpload={handleUpload} loading={uploading} />
+            {!sourceSelected ? (
+              <>
+                <div className="text-center animate-[fadeIn_0.5s_ease-out]">
+                  <h2 className="text-4xl font-bold mb-3 tracking-tight">
+                    Move your music to{" "}
+                    <span className="bg-gradient-to-r from-spotify-green to-tidal-blue bg-clip-text text-transparent">
+                      Tidal
+                    </span>
+                  </h2>
+                  <p className="text-surface-200 max-w-md mx-auto">
+                    Transfer your playlists, keep your music. Free and open source.
+                  </p>
+                </div>
 
-            <Card className="p-4">
-              <h3 className="text-sm font-semibold mb-3">How it works</h3>
-              <ol className="space-y-2 text-sm text-surface-200">
-                <li className="flex gap-3">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-800 text-xs font-bold text-white">1</span>
-                  <span>Go to <a href="https://exportify.app" target="_blank" rel="noopener noreferrer" className="text-spotify-green hover:underline">exportify.app</a> and log in with Spotify</span>
-                </li>
-                <li className="flex gap-3">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-800 text-xs font-bold text-white">2</span>
-                  <span>Click "Export" on each playlist you want to transfer</span>
-                </li>
-                <li className="flex gap-3">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-800 text-xs font-bold text-white">3</span>
-                  <span>Upload the downloaded CSV files here</span>
-                </li>
-                <li className="flex gap-3">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-800 text-xs font-bold text-white">4</span>
-                  <span>Connect your Tidal account and start the migration</span>
-                </li>
-              </ol>
-            </Card>
+                <HeroAnimation />
+                <SourceSelector onSelectSpotify={() => setSourceSelected(true)} />
+              </>
+            ) : (
+              <>
+                <div className="text-center animate-[fadeIn_0.3s_ease-out]">
+                  <h2 className="text-2xl font-bold mb-2">Upload your Spotify playlists</h2>
+                  <p className="text-surface-200 text-sm">
+                    Export your playlists at{" "}
+                    <a
+                      href="https://exportify.app"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-spotify-green hover:underline"
+                    >
+                      exportify.app
+                    </a>{" "}
+                    and drop the CSV files below.
+                  </p>
+                </div>
+
+                <CSVUpload onUpload={handleUpload} loading={uploading} />
+
+                <Card className="p-4 animate-[slideUp_0.4s_ease-out_0.2s_both]">
+                  <h3 className="text-sm font-semibold mb-3">How it works</h3>
+                  <ol className="space-y-2 text-sm text-surface-200">
+                    <li className="flex gap-3">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-800 text-xs font-bold text-white">1</span>
+                      <span>Go to <a href="https://exportify.app" target="_blank" rel="noopener noreferrer" className="text-spotify-green hover:underline">exportify.app</a> and log in with Spotify</span>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-800 text-xs font-bold text-white">2</span>
+                      <span>Click "Export" on each playlist you want to transfer</span>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-800 text-xs font-bold text-white">3</span>
+                      <span>Upload the downloaded CSV files here</span>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-800 text-xs font-bold text-white">4</span>
+                      <span>Connect your Tidal account and start the migration</span>
+                    </li>
+                  </ol>
+                </Card>
+
+              </>
+            )}
           </div>
         )}
 
         {/* Step 2: Select playlists */}
         {step === "select" && (
           <div className="space-y-6">
-            <Card className="text-center p-4">
-              <p className="text-2xl font-bold">{totalTracks.toLocaleString()}</p>
-              <p className="text-xs text-surface-200">
-                tracks across {playlists.length} playlist{playlists.length !== 1 ? "s" : ""}
-              </p>
-            </Card>
+            <PlaylistPreview playlists={playlists} totalTracks={totalTracks} />
             <h3 className="text-lg font-semibold">Select playlists to migrate</h3>
             <SelectionPanel
               playlists={playlists}
@@ -263,7 +282,6 @@ export default function App() {
           />
         )}
 
-        {/* Footer */}
         <footer className="mt-16 pb-8 text-center text-xs text-surface-700">
           <p>
             Tuneshift is free and open source. Your CSV files are parsed
