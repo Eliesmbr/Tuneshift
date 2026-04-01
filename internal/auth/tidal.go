@@ -82,13 +82,55 @@ func (ta *TidalAuth) ExchangeCode(code, codeVerifier string) (*TokenData, error)
 		return nil, err
 	}
 
-	return &TokenData{
+	token := &TokenData{
 		AccessToken:  tokenResp.AccessToken,
 		RefreshToken: tokenResp.RefreshToken,
 		ExpiresAt:    time.Now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second),
 		UserID:       fmt.Sprintf("%d", tokenResp.User.UserID),
 		UserName:     tokenResp.User.Username,
-	}, nil
+	}
+
+	// Fetch country code from user profile
+	if cc, err := ta.fetchCountryCode(token.AccessToken, token.UserID); err == nil {
+		token.CountryCode = cc
+	}
+
+	return token, nil
+}
+
+func (ta *TidalAuth) fetchCountryCode(accessToken, userID string) (string, error) {
+	u := fmt.Sprintf("https://openapi.tidal.com/v2/users/%s?countryCode=US", userID)
+	req, err := http.NewRequest("GET", u, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Accept", "application/vnd.api+json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("failed to fetch user: %s", resp.Status)
+	}
+
+	var result struct {
+		Data struct {
+			Attributes struct {
+				Country string `json:"country"`
+			} `json:"attributes"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", err
+	}
+	if result.Data.Attributes.Country == "" {
+		return "US", nil
+	}
+	return result.Data.Attributes.Country, nil
 }
 
 func (ta *TidalAuth) RefreshAccessToken(refreshToken string) (*TokenData, error) {

@@ -20,7 +20,7 @@ export interface UploadResult {
 }
 
 export interface ProgressEvent {
-  type: "phase" | "progress" | "playlist" | "complete" | "error" | "result" | "not_found";
+  type: "phase" | "progress" | "playlist" | "complete" | "error" | "result" | "not_found" | "duplicate";
   message: string;
   current?: number;
   total?: number;

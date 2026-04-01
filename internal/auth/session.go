@@ -29,6 +29,7 @@ type TokenData struct {
 	UserID       string    `json:"user_id,omitempty"`
 	UserName     string    `json:"user_name,omitempty"`
 	UserImage    string    `json:"user_image,omitempty"`
+	CountryCode  string    `json:"country_code,omitempty"`
 }
 
 func NewSessionManager(key []byte) *SessionManager {

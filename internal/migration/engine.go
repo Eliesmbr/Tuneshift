@@ -42,9 +42,25 @@ func NewEngine(tidalClient *tidal.Client, progress *ProgressReporter) *Engine {
 func (e *Engine) RunFromCSV(ctx context.Context, playlists []csvimport.Playlist) (*Result, error) {
 	result := &Result{}
 
+	// Check for existing playlists on Tidal
+	existingNames := make(map[string]bool)
+	if names, err := e.tidalClient.GetUserPlaylists(); err == nil {
+		for _, name := range names {
+			existingNames[name] = true
+		}
+	}
+
 	for _, pl := range playlists {
 		if ctx.Err() != nil {
 			return result, ctx.Err()
+		}
+
+		if existingNames[pl.Name] {
+			e.progress.Send(ProgressEvent{
+				Type:    "duplicate",
+				Message: fmt.Sprintf("Playlist '%s' already exists on Tidal - skipping", pl.Name),
+			})
+			continue
 		}
 
 		e.progress.Send(ProgressEvent{

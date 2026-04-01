@@ -30,13 +30,21 @@ export function useMigration() {
         const event: ProgressEvent = JSON.parse(e.data);
         setEvents((prev) => [...prev, event]);
 
+        // Update browser tab title with progress
+        if (event.type === "progress" && event.total && event.current) {
+          const pct = Math.round((event.current / event.total) * 100);
+          document.title = `Tuneshift (${pct}%)`;
+        }
+
         if (event.type === "complete" || event.type === "result") {
+          document.title = "Tuneshift - Done!";
           setDone(true);
           setRunning(false);
           setTimeout(() => es.close(), 1000);
         }
 
         if (event.type === "error") {
+          document.title = "Tuneshift";
           setError(event.message);
           setDone(true);
           setRunning(false);

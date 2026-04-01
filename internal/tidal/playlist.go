@@ -15,6 +15,28 @@ type jsonAPIPlaylistCreate struct {
 	} `json:"data"`
 }
 
+func (c *Client) GetUserPlaylists() ([]string, error) {
+	u := fmt.Sprintf("%s/userCollectionPlaylists?countryCode=%s", baseURL, c.countryCode)
+
+	var result struct {
+		Data []struct {
+			ID         string `json:"id"`
+			Attributes struct {
+				Name string `json:"name"`
+			} `json:"attributes"`
+		} `json:"data"`
+	}
+	if err := c.doRequest("GET", u, nil, &result); err != nil {
+		return nil, err
+	}
+
+	names := make([]string, len(result.Data))
+	for i, p := range result.Data {
+		names[i] = p.Attributes.Name
+	}
+	return names, nil
+}
+
 func (c *Client) CreatePlaylist(name, description string) (string, error) {
 	body := jsonAPIPlaylistCreate{}
 	body.Data.Type = "playlists"

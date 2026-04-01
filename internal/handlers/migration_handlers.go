@@ -68,7 +68,11 @@ func (h *Handler) StartMigration(w http.ResponseWriter, r *http.Request) {
 	h.reporters[sessionID] = progress
 	h.mu.Unlock()
 
-	tidalClient := tidal.NewClient(tidalToken.AccessToken, tidalToken.UserID, "US")
+	countryCode := tidalToken.CountryCode
+	if countryCode == "" {
+		countryCode = "US"
+	}
+	tidalClient := tidal.NewClient(tidalToken.AccessToken, tidalToken.UserID, countryCode)
 	engine := migration.NewEngine(tidalClient, progress)
 
 	go func() {
