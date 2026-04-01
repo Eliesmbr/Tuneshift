@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"log"
 	"strconv"
 	"strings"
 )
@@ -84,6 +85,8 @@ func ParseCSV(r io.Reader, playlistName string) (*Playlist, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read CSV header: %w", err)
 	}
+
+	log.Printf("CSV header (%d cols): %q", len(header), header)
 
 	cols, err := findColumns(header)
 	if err != nil {
