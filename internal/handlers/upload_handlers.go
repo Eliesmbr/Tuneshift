@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -18,6 +19,7 @@ func (h *Handler) UploadCSV(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 
 	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
+		log.Printf("ParseMultipartForm error: %v", err)
 		writeError(w, http.StatusBadRequest, "file too large (max 50MB)")
 		return
 	}
@@ -46,7 +48,8 @@ func (h *Handler) UploadCSV(w http.ResponseWriter, r *http.Request) {
 
 		playlist, err := csvimport.ParseCSV(file, name)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "failed to parse CSV file")
+			log.Printf("CSV parse error for %q: %v", fileHeader.Filename, err)
+			writeError(w, http.StatusBadRequest, "failed to parse CSV file: "+err.Error())
 			return
 		}
 
