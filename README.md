@@ -97,7 +97,12 @@ The app runs on port `8080`. Put a reverse proxy (Caddy, Nginx) in front for HTT
 
 ## Why not use the Spotify API directly?
 
-Since February 2026, Spotify requires Premium for API access and limits development apps to 5 users. Extended quota mode is only available to companies with 250k+ monthly active users. Using Exportify's CSV export is the only viable path for a free, public tool.
+> [!NOTE]
+> Since February 2026, Spotify requires a Premium subscription for Web API access and limits new developer apps to just 5 manually allowlisted users. Extended quota mode (unlimited users) is only available to registered companies with 250k+ monthly active users.
+>
+> This makes it impossible for new open-source projects to use the Spotify API directly. Tuneshift uses [Exportify](https://exportify.app) as a workaround - Exportify's Spotify app was registered before these restrictions and is grandfathered in with full API access. Users export their playlists as CSV files through Exportify, then upload them to Tuneshift for migration to Tidal.
+>
+> More details: [Spotify February 2026 Migration Guide](https://developer.spotify.com/documentation/web-api/tutorials/february-2026-migration-guide)
 
 ## Tech stack
 
