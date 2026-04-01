@@ -1,6 +1,7 @@
 package csvimport
 
 import (
+	"bufio"
 	"encoding/csv"
 	"fmt"
 	"io"
@@ -70,7 +71,13 @@ func findColumns(header []string) (*columnMap, error) {
 // ParseCSV parses an Exportify CSV and returns the tracks.
 // playlistName is provided by the caller (derived from filename).
 func ParseCSV(r io.Reader, playlistName string) (*Playlist, error) {
-	reader := csv.NewReader(r)
+	// Strip UTF-8 BOM if present (common when CSV is downloaded on Mac/iOS)
+	br := bufio.NewReader(r)
+	if bom, err := br.Peek(3); err == nil && len(bom) >= 3 && bom[0] == 0xEF && bom[1] == 0xBB && bom[2] == 0xBF {
+		br.Discard(3)
+	}
+
+	reader := csv.NewReader(br)
 	reader.LazyQuotes = true
 
 	header, err := reader.Read()
