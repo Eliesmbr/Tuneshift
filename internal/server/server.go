@@ -44,7 +44,7 @@ func New(cfg *config.Config) (*Server, error) {
 			Addr:         cfg.Address(),
 			Handler:      handler,
 			ReadTimeout:  30 * time.Second,
-			WriteTimeout: 120 * time.Second, // Long for SSE
+			WriteTimeout: 0, // Disabled for SSE (long-lived connections)
 			IdleTimeout:  60 * time.Second,
 		},
 		cfg: cfg,
