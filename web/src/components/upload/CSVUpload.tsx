@@ -32,14 +32,14 @@ export function CSVUpload({ onUpload, loading }: Props) {
 
   return (
     <Card
-      className={`relative transition-colors cursor-pointer ${
+      className={`relative transition-all duration-200 cursor-pointer ${
         dragOver
-          ? "border-spotify-green bg-spotify-green/5"
-          : "hover:border-surface-700"
+          ? "border-spotify-green bg-spotify-green/5 scale-[1.02]"
+          : "hover:border-surface-700 hover:bg-surface-900/80"
       }`}
     >
       <div
-        className="flex flex-col items-center justify-center py-12 text-center"
+        className="flex flex-col items-center justify-center py-10 text-center"
         onDragOver={(e) => {
           e.preventDefault();
           setDragOver(true);
@@ -49,43 +49,32 @@ export function CSVUpload({ onUpload, loading }: Props) {
         onClick={() => inputRef.current?.click()}
       >
         {loading ? (
-          <>
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-surface-700 border-t-spotify-green mb-4" />
-            <p className="text-sm text-surface-200">Parsing CSV files...</p>
-          </>
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-10 w-10 animate-spin rounded-full border-2 border-surface-700 border-t-spotify-green" />
+            <p className="text-sm text-surface-200">Parsing your playlists...</p>
+          </div>
         ) : (
           <>
-            <svg
-              className="h-12 w-12 text-surface-200 mb-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={1}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-              />
-            </svg>
-            <p className="text-lg font-semibold mb-1">
-              Drop your Exportify CSV files here
-            </p>
-            <p className="text-sm text-surface-200 mb-4">
-              or click to browse
-            </p>
-            <p className="text-xs text-surface-700 max-w-sm">
-              Export your Spotify playlists at{" "}
-              <a
-                href="https://exportify.app"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-spotify-green hover:underline"
-                onClick={(e) => e.stopPropagation()}
+            <div className="mb-4 h-14 w-14 rounded-2xl bg-gradient-to-br from-spotify-green/20 to-tidal-blue/20 flex items-center justify-center">
+              <svg
+                className="h-7 w-7 text-surface-200"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
               >
-                exportify.app
-              </a>
-              {" "}and upload the CSV files here
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
+                />
+              </svg>
+            </div>
+            <p className="text-lg font-semibold mb-1">
+              Drop your CSV files here
+            </p>
+            <p className="text-sm text-surface-200">
+              or click to browse
             </p>
           </>
         )}
