@@ -1,0 +1,7 @@
+bin/
+web/node_modules/
+web/dist/
+.env
+.git/
+.claude/
+*.md

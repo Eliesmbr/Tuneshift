@@ -1,0 +1,139 @@
+package migration
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"time"
+
+	"tuneshift/internal/csvimport"
+	"tuneshift/internal/tidal"
+)
+
+type Result struct {
+	TotalTracks   int            `json:"total_tracks"`
+	MatchedTracks int            `json:"matched_tracks"`
+	FailedTracks  int            `json:"failed_tracks"`
+	Playlists     int            `json:"playlists_created"`
+	NotFound      []NotFoundItem `json:"not_found"`
+}
+
+type NotFoundItem struct {
+	Name   string `json:"name"`
+	Artist string `json:"artist"`
+	Album  string `json:"album"`
+	ISRC   string `json:"isrc,omitempty"`
+}
+
+type Engine struct {
+	tidalClient *tidal.Client
+	matcher     *Matcher
+	progress    *ProgressReporter
+}
+
+func NewEngine(tidalClient *tidal.Client, progress *ProgressReporter) *Engine {
+	return &Engine{
+		tidalClient: tidalClient,
+		matcher:     NewMatcher(tidalClient),
+		progress:    progress,
+	}
+}
+
+func (e *Engine) RunFromCSV(ctx context.Context, playlists []csvimport.Playlist) (*Result, error) {
+	result := &Result{}
+
+	for _, pl := range playlists {
+		if ctx.Err() != nil {
+			return result, ctx.Err()
+		}
+
+		e.progress.Send(ProgressEvent{
+			Type:    "phase",
+			Message: fmt.Sprintf("Migrating playlist '%s' (%d tracks)...", pl.Name, len(pl.Tracks)),
+		})
+
+		tidalPlaylistUUID, err := e.tidalClient.CreatePlaylist(pl.Name, "Migrated from Spotify via Tuneshift")
+		if err != nil {
+			log.Printf("Failed to create playlist %q: %v", pl.Name, err)
+			e.progress.Send(ProgressEvent{
+				Type:    "error",
+				Message: fmt.Sprintf("Failed to create playlist '%s': %s", pl.Name, err.Error()),
+			})
+			continue
+		}
+
+		matchedIDs := e.matchCSVTracks(ctx, pl.Tracks, result)
+
+		if len(matchedIDs) > 0 {
+			if err := e.tidalClient.AddTracksToPlaylist(tidalPlaylistUUID, matchedIDs); err != nil {
+				log.Printf("Failed to add tracks to playlist %q: %v", pl.Name, err)
+			}
+		}
+
+		result.Playlists++
+		e.progress.Send(ProgressEvent{
+			Type:    "playlist",
+			Message: fmt.Sprintf("Playlist '%s': %d/%d tracks matched", pl.Name, len(matchedIDs), len(pl.Tracks)),
+		})
+	}
+
+	// Send not-found tracks
+	for _, nf := range result.NotFound {
+		artist := nf.Artist
+		if artist != "" {
+			artist = " by " + artist
+		}
+		e.progress.Send(ProgressEvent{
+			Type:    "not_found",
+			Message: nf.Name + artist,
+		})
+	}
+
+	e.progress.Send(ProgressEvent{
+		Type:    "complete",
+		Message: "Migration complete!",
+	})
+
+	return result, nil
+}
+
+func (e *Engine) matchCSVTracks(ctx context.Context, tracks []csvimport.Track, result *Result) []string {
+	var matchedIDs []string
+	total := len(tracks)
+
+	for i, track := range tracks {
+		if ctx.Err() != nil {
+			break
+		}
+
+		if i > 0 {
+			time.Sleep(300 * time.Millisecond)
+		}
+
+		tidalTrack, err := e.matcher.MatchCSV(track)
+		if err != nil || tidalTrack == nil {
+			result.FailedTracks++
+			result.NotFound = append(result.NotFound, NotFoundItem{
+				Name:   track.TrackName,
+				Artist: track.FirstArtist(),
+				Album:  track.AlbumName,
+				ISRC:   track.ISRC,
+			})
+		} else {
+			matchedIDs = append(matchedIDs, tidalTrack.ID)
+			result.MatchedTracks++
+		}
+		result.TotalTracks++
+
+		if (i+1)%10 == 0 || i+1 == total {
+			e.progress.Send(ProgressEvent{
+				Type:    "progress",
+				Message: fmt.Sprintf("Tracks: %d/%d matched", result.MatchedTracks, i+1),
+				Current: i + 1,
+				Total:   total,
+			})
+		}
+	}
+
+	return matchedIDs
+}
