@@ -13,14 +13,12 @@ async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  // Tidal Auth
   tidalStatus: () =>
     fetchJSON<{ connected: boolean; user?: { id: string; name: string } }>(
       "/auth/tidal/status",
     ),
   tidalLogout: () => fetchJSON<void>("/auth/tidal/logout", { method: "POST" }),
 
-  // CSV Upload
   uploadCSV: async (files: File[]) => {
     const form = new FormData();
     files.forEach((f) => form.append("files", f));
@@ -41,7 +39,6 @@ export const api = {
     }>;
   },
 
-  // Migration
   startMigration: (body: {
     upload_session_id: string;
     playlists: string[];

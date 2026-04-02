@@ -1,13 +1,12 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
-type Variant = "spotify" | "tidal" | "primary" | "secondary" | "danger";
+type Variant = "spotify" | "tidal" | "primary" | "secondary";
 
 const variants: Record<Variant, string> = {
   spotify: "bg-spotify-green hover:bg-spotify-green/90 text-black font-semibold",
   tidal: "bg-tidal-blue hover:bg-tidal-blue/90 text-black font-semibold",
   primary: "bg-white hover:bg-white/90 text-surface-950 font-semibold",
   secondary: "bg-surface-800 hover:bg-surface-700 text-white border border-surface-700",
-  danger: "bg-red-600 hover:bg-red-700 text-white",
 };
 
 interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {

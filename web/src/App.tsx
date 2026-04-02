@@ -64,9 +64,7 @@ export default function App() {
       setStep("done");
     } else if (migration.running) {
       setStep("migrate");
-    } else if (selectedPlaylists.length > 0 && !auth.tidal.connected) {
-      setStep("connect-tidal");
-    } else if (selectedPlaylists.length > 0 && auth.tidal.connected) {
+    } else if (selectedPlaylists.length > 0) {
       setStep("connect-tidal");
     } else if (playlists.length > 0) {
       setStep("select");
