@@ -26,16 +26,7 @@ func NewMatcher(tidalClient *tidal.Client) *Matcher {
 	return &Matcher{tidalClient: tidalClient}
 }
 
-func (m *Matcher) Match(track source.Track) (*tidal.Track, error) {
-	// Strategy 1: ISRC lookup
-	if track.ISRC != "" {
-		result, err := m.tidalClient.SearchTrackByISRC(track.ISRC)
-		if err == nil && result != nil {
-			return result, nil
-		}
-	}
-
-	// Strategy 2: Name + Artist search with fuzzy matching
+func (m *Matcher) FuzzyMatch(track source.Track) (*tidal.Track, error) {
 	query := track.TrackName + " " + track.FirstArtist()
 	candidates, err := m.tidalClient.SearchTrack(query, 10)
 	if err != nil {

@@ -8,21 +8,40 @@ import (
 	"strings"
 )
 
-func (c *Client) SearchTrackByISRC(isrc string) (*Track, error) {
-	u := fmt.Sprintf("%s/tracks?countryCode=%s&filter[isrc]=%s",
-		baseURL, c.countryCode, url.QueryEscape(strings.ToUpper(isrc)))
+func (c *Client) SearchTracksByISRC(isrcs []string) (map[string]*Track, error) {
+	result := make(map[string]*Track, len(isrcs))
 
-	var result struct {
-		Data []searchItem `json:"data"`
-	}
-	if err := c.doRequest("GET", u, nil, &result); err != nil {
-		return nil, err
-	}
-	if len(result.Data) == 0 {
-		return nil, nil
+	// Batch in chunks of 25 to avoid URL length limits
+	for i := 0; i < len(isrcs); i += 25 {
+		end := i + 25
+		if end > len(isrcs) {
+			end = len(isrcs)
+		}
+
+		upper := make([]string, end-i)
+		for j, isrc := range isrcs[i:end] {
+			upper[j] = strings.ToUpper(isrc)
+		}
+
+		u := fmt.Sprintf("%s/tracks?countryCode=%s&filter[isrc]=%s&limit=100",
+			baseURL, c.countryCode, url.QueryEscape(strings.Join(upper, ",")))
+
+		var resp struct {
+			Data []searchItem `json:"data"`
+		}
+		if err := c.doRequest("GET", u, nil, &resp); err != nil {
+			return nil, err
+		}
+
+		for _, item := range resp.Data {
+			t := item.toTrack()
+			if t.ISRC != "" {
+				result[strings.ToUpper(t.ISRC)] = t
+			}
+		}
 	}
 
-	return result.Data[0].toTrack(), nil
+	return result, nil
 }
 
 func (c *Client) SearchTrack(query string, limit int) ([]Track, error) {

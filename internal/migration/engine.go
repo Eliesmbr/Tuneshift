@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"tuneshift/internal/source"
@@ -114,20 +115,60 @@ func (e *Engine) Run(ctx context.Context, playlists []source.Playlist) (*Result,
 }
 
 func (e *Engine) matchTracks(ctx context.Context, tracks []source.Track, result *Result) []string {
-	var matchedIDs []string
 	total := len(tracks)
+	matchedIDs := make([]string, 0, total)
 
+	// Phase 1: Batch ISRC lookup
+	isrcs := make([]string, 0, total)
+	for _, t := range tracks {
+		if t.ISRC != "" {
+			isrcs = append(isrcs, t.ISRC)
+		}
+	}
+
+	isrcMatches := make(map[string]*tidal.Track)
+	if len(isrcs) > 0 {
+		e.progress.Send(ProgressEvent{
+			Type:    "phase",
+			Message: fmt.Sprintf("Looking up %d tracks by ISRC...", len(isrcs)),
+		})
+		matches, err := e.tidalClient.SearchTracksByISRC(isrcs)
+		if err != nil {
+			log.Printf("Batch ISRC lookup failed: %v, falling back to individual search", err)
+		} else {
+			isrcMatches = matches
+		}
+	}
+
+	// Phase 2: Process results, fuzzy search only for misses
+	fuzzyCount := 0
 	for i, track := range tracks {
 		if ctx.Err() != nil {
 			break
 		}
 
-		if i > 0 {
-			time.Sleep(300 * time.Millisecond)
+		result.TotalTracks++
+		var matched *tidal.Track
+
+		if track.ISRC != "" {
+			matched = isrcMatches[strings.ToUpper(track.ISRC)]
 		}
 
-		tidalTrack, err := e.matcher.Match(track)
-		if err != nil || tidalTrack == nil {
+		if matched == nil {
+			if fuzzyCount > 0 {
+				time.Sleep(300 * time.Millisecond)
+			}
+			fuzzyCount++
+			t, err := e.matcher.FuzzyMatch(track)
+			if err == nil {
+				matched = t
+			}
+		}
+
+		if matched != nil {
+			matchedIDs = append(matchedIDs, matched.ID)
+			result.MatchedTracks++
+		} else {
 			result.FailedTracks++
 			result.NotFound = append(result.NotFound, NotFoundItem{
 				Name:   track.TrackName,
@@ -135,11 +176,7 @@ func (e *Engine) matchTracks(ctx context.Context, tracks []source.Track, result 
 				Album:  track.AlbumName,
 				ISRC:   track.ISRC,
 			})
-		} else {
-			matchedIDs = append(matchedIDs, tidalTrack.ID)
-			result.MatchedTracks++
 		}
-		result.TotalTracks++
 
 		if (i+1)%10 == 0 || i+1 == total {
 			e.progress.Send(ProgressEvent{
