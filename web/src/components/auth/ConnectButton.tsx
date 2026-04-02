@@ -4,7 +4,6 @@ interface Props {
   service: "spotify" | "tidal";
   connected: boolean;
   userName?: string;
-  userImage?: string;
   onConnect: () => void;
   onDisconnect: () => void;
 }
@@ -21,13 +20,10 @@ const TidalIcon = () => (
   </svg>
 );
 
-export function ConnectButton({ service, connected, userName, userImage, onConnect, onDisconnect }: Props) {
+export function ConnectButton({ service, connected, userName, onConnect, onDisconnect }: Props) {
   if (connected) {
     return (
       <div className="flex items-center gap-4 rounded-2xl border border-surface-800 bg-surface-900/50 px-5 py-4">
-        {userImage && (
-          <img src={userImage} alt="" className="h-10 w-10 rounded-full" />
-        )}
         <div className="flex-1">
           <p className="text-xs text-surface-200">Connected to {service === "spotify" ? "Spotify" : "Tidal"}</p>
           <p className="font-semibold">{userName}</p>

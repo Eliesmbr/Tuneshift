@@ -11,7 +11,6 @@ import (
 
 // Track represents a track parsed from an Exportify CSV
 type Track struct {
-	TrackURI    string
 	TrackName   string
 	ArtistNames string
 	AlbumName   string
