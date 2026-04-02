@@ -68,8 +68,10 @@ func (c *Client) doRequestOnce(method, url string, body interface{}, result inte
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+c.accessToken)
-	req.Header.Set("Content-Type", "application/vnd.api+json")
 	req.Header.Set("Accept", "application/vnd.api+json")
+	if body != nil {
+		req.Header.Set("Content-Type", "application/vnd.api+json")
+	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {

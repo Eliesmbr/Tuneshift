@@ -10,7 +10,7 @@ type jsonAPIPlaylistCreate struct {
 		Attributes struct {
 			Name        string `json:"name"`
 			Description string `json:"description"`
-			Privacy     string `json:"privacy"`
+			AccessType  string `json:"accessType"`
 		} `json:"attributes"`
 	} `json:"data"`
 }
@@ -42,7 +42,7 @@ func (c *Client) CreatePlaylist(name, description string) (string, error) {
 	body.Data.Type = "playlists"
 	body.Data.Attributes.Name = name
 	body.Data.Attributes.Description = description
-	body.Data.Attributes.Privacy = "PUBLIC"
+	body.Data.Attributes.AccessType = "PUBLIC"
 
 	var result struct {
 		Data struct {

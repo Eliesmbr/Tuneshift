@@ -93,21 +93,45 @@ func (s *searchItem) toTrack() *Track {
 	}
 }
 
+// parseDuration parses a duration value that can be an int (seconds),
+// a numeric string, or an ISO 8601 duration like "PT2M58S".
+// Returns seconds.
 func parseDuration(raw json.RawMessage) int {
 	if len(raw) == 0 {
 		return 0
 	}
-	// Try as int first
 	var i int
 	if err := json.Unmarshal(raw, &i); err == nil {
 		return i
 	}
-	// Try as string
 	var s string
 	if err := json.Unmarshal(raw, &s); err == nil {
 		if v, err := strconv.Atoi(s); err == nil {
 			return v
 		}
+		return parseISO8601Duration(s)
 	}
 	return 0
+}
+
+func parseISO8601Duration(s string) int {
+	s = strings.TrimPrefix(s, "PT")
+	total := 0
+	num := 0
+	for _, c := range s {
+		switch {
+		case c >= '0' && c <= '9':
+			num = num*10 + int(c-'0')
+		case c == 'H':
+			total += num * 3600
+			num = 0
+		case c == 'M':
+			total += num * 60
+			num = 0
+		case c == 'S':
+			total += num
+			num = 0
+		}
+	}
+	return total
 }
