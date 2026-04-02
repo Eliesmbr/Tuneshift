@@ -134,7 +134,7 @@ func (e *Engine) matchTracks(ctx context.Context, tracks []source.Track, result 
 		})
 		matches, err := e.tidalClient.SearchTracksByISRC(isrcs)
 		if err != nil {
-			log.Printf("Batch ISRC lookup failed: %v, falling back to individual search", err)
+			log.Printf("Batch ISRC lookup failed: %v, falling back to fuzzy search", err)
 		} else {
 			isrcMatches = matches
 		}

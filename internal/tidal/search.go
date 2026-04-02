@@ -11,20 +11,21 @@ import (
 func (c *Client) SearchTracksByISRC(isrcs []string) (map[string]*Track, error) {
 	result := make(map[string]*Track, len(isrcs))
 
-	// Batch in chunks of 25 to avoid URL length limits
+	// Batch in chunks of 25 to stay within URL length limits.
+	// Tidal returns one track per ISRC when multiple are provided.
 	for i := 0; i < len(isrcs); i += 25 {
 		end := i + 25
 		if end > len(isrcs) {
 			end = len(isrcs)
 		}
 
-		upper := make([]string, end-i)
-		for j, isrc := range isrcs[i:end] {
-			upper[j] = strings.ToUpper(isrc)
+		params := url.Values{}
+		params.Set("countryCode", c.countryCode)
+		for _, isrc := range isrcs[i:end] {
+			params.Add("filter[isrc]", strings.ToUpper(isrc))
 		}
 
-		u := fmt.Sprintf("%s/tracks?countryCode=%s&filter[isrc]=%s&limit=100",
-			baseURL, c.countryCode, url.QueryEscape(strings.Join(upper, ",")))
+		u := baseURL + "/tracks?" + params.Encode()
 
 		var resp struct {
 			Data []searchItem `json:"data"`
