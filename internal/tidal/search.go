@@ -11,10 +11,9 @@ import (
 func (c *Client) SearchTracksByISRC(isrcs []string) (map[string]*Track, error) {
 	result := make(map[string]*Track, len(isrcs))
 
-	// Batch in chunks of 25 to stay within URL length limits.
-	// Tidal returns one track per ISRC when multiple are provided.
-	for i := 0; i < len(isrcs); i += 25 {
-		end := i + 25
+	// Tidal allows max 20 ISRCs per request and returns one track per ISRC.
+	for i := 0; i < len(isrcs); i += 20 {
+		end := i + 20
 		if end > len(isrcs) {
 			end = len(isrcs)
 		}
