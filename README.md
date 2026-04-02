@@ -1,6 +1,6 @@
 # <img src="web/public/tuneshift.svg" width="32" height="32" alt=""> Tuneshift
 
-**Free, open-source tool to migrate your Spotify playlists to Tidal.**
+**Free, open-source tool to migrate your playlists to Tidal.**
 
 No account needed. No data stored. Just upload, connect, and migrate.
 
