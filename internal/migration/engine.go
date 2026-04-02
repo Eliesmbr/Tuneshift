@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"tuneshift/internal/csvimport"
+	"tuneshift/internal/source"
 	"tuneshift/internal/tidal"
 )
 
@@ -39,7 +39,7 @@ func NewEngine(tidalClient *tidal.Client, progress *ProgressReporter) *Engine {
 	}
 }
 
-func (e *Engine) RunFromCSV(ctx context.Context, playlists []csvimport.Playlist) (*Result, error) {
+func (e *Engine) Run(ctx context.Context, playlists []source.Playlist) (*Result, error) {
 	result := &Result{}
 
 	// Check for existing playlists on Tidal
@@ -78,7 +78,7 @@ func (e *Engine) RunFromCSV(ctx context.Context, playlists []csvimport.Playlist)
 			continue
 		}
 
-		matchedIDs := e.matchCSVTracks(ctx, pl.Tracks, result)
+		matchedIDs := e.matchTracks(ctx, pl.Tracks, result)
 
 		if len(matchedIDs) > 0 {
 			if err := e.tidalClient.AddTracksToPlaylist(tidalPlaylistUUID, matchedIDs); err != nil {
@@ -113,7 +113,7 @@ func (e *Engine) RunFromCSV(ctx context.Context, playlists []csvimport.Playlist)
 	return result, nil
 }
 
-func (e *Engine) matchCSVTracks(ctx context.Context, tracks []csvimport.Track, result *Result) []string {
+func (e *Engine) matchTracks(ctx context.Context, tracks []source.Track, result *Result) []string {
 	var matchedIDs []string
 	total := len(tracks)
 
@@ -126,7 +126,7 @@ func (e *Engine) matchCSVTracks(ctx context.Context, tracks []csvimport.Track, r
 			time.Sleep(300 * time.Millisecond)
 		}
 
-		tidalTrack, err := e.matcher.MatchCSV(track)
+		tidalTrack, err := e.matcher.Match(track)
 		if err != nil || tidalTrack == nil {
 			result.FailedTracks++
 			result.NotFound = append(result.NotFound, NotFoundItem{

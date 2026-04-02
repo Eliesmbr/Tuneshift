@@ -11,12 +11,12 @@ import (
 
 	"tuneshift/internal/auth"
 	"tuneshift/internal/config"
-	"tuneshift/internal/csvimport"
 	"tuneshift/internal/migration"
+	"tuneshift/internal/source"
 )
 
 type uploadEntry struct {
-	playlists []csvimport.Playlist
+	playlists []source.Playlist
 	createdAt time.Time
 }
 

@@ -6,7 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"tuneshift/internal/csvimport"
+	"tuneshift/internal/source"
+	"tuneshift/internal/source/exportify"
 )
 
 const (
@@ -32,7 +33,7 @@ func (h *Handler) UploadCSV(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var playlists []csvimport.Playlist
+	var playlists []source.Playlist
 
 	for _, fileHeader := range files {
 		file, err := fileHeader.Open()
@@ -44,7 +45,7 @@ func (h *Handler) UploadCSV(w http.ResponseWriter, r *http.Request) {
 
 		name := strings.TrimSuffix(fileHeader.Filename, filepath.Ext(fileHeader.Filename))
 
-		playlist, err := csvimport.ParseCSV(file, name)
+		playlist, err := exportify.ParseCSV(file, name)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, "failed to parse CSV file: "+err.Error())
 			return
@@ -81,7 +82,7 @@ func (h *Handler) UploadCSV(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) storeUploadedPlaylists(playlists []csvimport.Playlist) (string, error) {
+func (h *Handler) storeUploadedPlaylists(playlists []source.Playlist) (string, error) {
 	id, err := generateSessionID()
 	if err != nil {
 		return "", err
@@ -97,7 +98,7 @@ func (h *Handler) storeUploadedPlaylists(playlists []csvimport.Playlist) (string
 	return id, nil
 }
 
-func (h *Handler) getUploadedPlaylists(sessionID string) ([]csvimport.Playlist, bool) {
+func (h *Handler) getUploadedPlaylists(sessionID string) ([]source.Playlist, bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	entry, ok := h.uploads[sessionID]

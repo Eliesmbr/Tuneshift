@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"tuneshift/internal/csvimport"
 	"tuneshift/internal/migration"
+	"tuneshift/internal/source"
 	"tuneshift/internal/tidal"
 )
 
@@ -42,7 +42,7 @@ func (h *Handler) StartMigration(w http.ResponseWriter, r *http.Request) {
 		for _, name := range req.Playlists {
 			selected[name] = true
 		}
-		var filtered []csvimport.Playlist
+		var filtered []source.Playlist
 		for _, pl := range playlists {
 			if selected[pl.Name] {
 				filtered = append(filtered, pl)
@@ -86,7 +86,7 @@ func (h *Handler) StartMigration(w http.ResponseWriter, r *http.Request) {
 		}()
 
 		ctx := context.Background()
-		result, err := engine.RunFromCSV(ctx, playlists)
+		result, err := engine.Run(ctx, playlists)
 		if err != nil {
 			progress.Send(migration.ProgressEvent{
 				Type:    "error",

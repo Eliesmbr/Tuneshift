@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"tuneshift/internal/csvimport"
+	"tuneshift/internal/source"
 	"tuneshift/internal/tidal"
 )
 
@@ -26,7 +26,7 @@ func NewMatcher(tidalClient *tidal.Client) *Matcher {
 	return &Matcher{tidalClient: tidalClient}
 }
 
-func (m *Matcher) MatchCSV(track csvimport.Track) (*tidal.Track, error) {
+func (m *Matcher) Match(track source.Track) (*tidal.Track, error) {
 	// Strategy 1: ISRC lookup
 	if track.ISRC != "" {
 		result, err := m.tidalClient.SearchTrackByISRC(track.ISRC)
