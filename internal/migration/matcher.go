@@ -41,6 +41,7 @@ func bestMatch(sourceName, sourceArtist string, sourceDurationMS int, candidates
 	bestScore := 0.0
 
 	normSource := normalize(sourceName)
+	normArtist := normalize(sourceArtist)
 
 	for i, candidate := range candidates {
 		if shouldExclude(sourceName, candidate.Title) {
@@ -57,9 +58,10 @@ func bestMatch(sourceName, sourceArtist string, sourceDurationMS int, candidates
 			noSpaceMatch(normSource, normCandidate),
 		)
 
+		artistScore := artistMatch(normArtist, candidate.ArtistNames)
 		durationScore := durationMatch(sourceDurationMS, candidate.Duration*1000)
 
-		score := titleScore*0.7 + durationScore*0.3
+		score := titleScore*0.5 + artistScore*0.35 + durationScore*0.15
 
 		if score > bestScore {
 			bestScore = score
@@ -72,6 +74,28 @@ func bestMatch(sourceName, sourceArtist string, sourceDurationMS int, candidates
 	}
 
 	return bestTrack
+}
+
+// artistMatch compares the source artist against a candidate's artist names.
+// Returns the best score across all candidate artists.
+func artistMatch(normSourceArtist string, candidateArtists []string) float64 {
+	if normSourceArtist == "" || len(candidateArtists) == 0 {
+		return 0
+	}
+
+	best := 0.0
+	for _, a := range candidateArtists {
+		normCandidate := normalize(a)
+		score := maxFloat(
+			wordOverlap(normSourceArtist, normCandidate),
+			containsScore(normSourceArtist, normCandidate),
+			noSpaceMatch(normSourceArtist, normCandidate),
+		)
+		if score > best {
+			best = score
+		}
+	}
+	return best
 }
 
 func normalize(s string) string {

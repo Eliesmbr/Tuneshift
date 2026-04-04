@@ -49,7 +49,7 @@ func (c *Client) SearchTrack(query string, limit int) ([]Track, error) {
 		limit = 10
 	}
 
-	u := fmt.Sprintf("%s/searchResults/%s?countryCode=%s&include=tracks",
+	u := fmt.Sprintf("%s/searchResults/%s?countryCode=%s&include=tracks,tracks.artists",
 		baseURL, url.PathEscape(query), c.countryCode)
 
 	var result struct {
@@ -59,12 +59,29 @@ func (c *Client) SearchTrack(query string, limit int) ([]Track, error) {
 		return nil, err
 	}
 
+	// Build artist name lookup from included artist objects
+	artistNames := make(map[string]string)
+	for _, item := range result.Included {
+		if item.Type == "artists" || item.Type == "artist" {
+			if item.Attributes.Name != "" {
+				artistNames[item.ID] = item.Attributes.Name
+			}
+		}
+	}
+
 	var tracks []Track
 	for _, item := range result.Included {
 		if item.Type != "tracks" && item.Type != "track" {
 			continue
 		}
-		tracks = append(tracks, *item.toTrack())
+		t := item.toTrack()
+		// Resolve artist names from relationships
+		for _, rel := range item.Relationships.Artists.Data {
+			if name, ok := artistNames[rel.ID]; ok {
+				t.ArtistNames = append(t.ArtistNames, name)
+			}
+		}
+		tracks = append(tracks, *t)
 		if len(tracks) >= limit {
 			break
 		}
@@ -78,9 +95,20 @@ type searchItem struct {
 	Type       string `json:"type"`
 	Attributes struct {
 		Title    string          `json:"title"`
+		Name     string          `json:"name"` // for artist resources
 		Duration json.RawMessage `json:"duration"`
 		ISRC     string          `json:"isrc"`
 	} `json:"attributes"`
+	Relationships struct {
+		Artists struct {
+			Data []resourceIdentifier `json:"data"`
+		} `json:"artists"`
+	} `json:"relationships"`
+}
+
+type resourceIdentifier struct {
+	ID   string `json:"id"`
+	Type string `json:"type"`
 }
 
 func (s *searchItem) toTrack() *Track {
