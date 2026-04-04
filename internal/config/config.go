@@ -8,10 +8,12 @@ import (
 )
 
 type Config struct {
-	Port          string
-	BaseURL       string
-	TidalClientID string
-	EncryptionKey []byte
+	Port               string
+	BaseURL            string
+	TidalClientID      string
+	GoogleClientID     string
+	GoogleClientSecret string
+	EncryptionKey      []byte
 }
 
 func Load() (*Config, error) {
@@ -21,10 +23,12 @@ func Load() (*Config, error) {
 	}
 
 	return &Config{
-		Port:          getEnv("PORT", "8080"),
-		BaseURL:       getEnv("BASE_URL", "http://localhost:8080"),
-		TidalClientID: getEnv("TIDAL_CLIENT_ID", ""),
-		EncryptionKey: key,
+		Port:               getEnv("PORT", "8080"),
+		BaseURL:            getEnv("BASE_URL", "http://localhost:8080"),
+		TidalClientID:      getEnv("TIDAL_CLIENT_ID", ""),
+		GoogleClientID:     getEnv("GOOGLE_CLIENT_ID", ""),
+		GoogleClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),
+		EncryptionKey:      key,
 	}, nil
 }
 

@@ -27,7 +27,16 @@ func New(cfg *config.Config) (*Server, error) {
 		cfg.BaseURL+"/api/auth/tidal/callback",
 	)
 
-	h := handlers.New(sessionManager, tidalAuth, cfg)
+	var googleAuth *auth.GoogleAuth
+	if cfg.GoogleClientID != "" && cfg.GoogleClientSecret != "" {
+		googleAuth = auth.NewGoogleAuth(
+			cfg.GoogleClientID,
+			cfg.GoogleClientSecret,
+			cfg.BaseURL+"/api/auth/google/callback",
+		)
+	}
+
+	h := handlers.New(sessionManager, tidalAuth, googleAuth, cfg)
 
 	mux := http.NewServeMux()
 	registerRoutes(mux, h)
@@ -63,6 +72,16 @@ func registerRoutes(mux *http.ServeMux, h *handlers.Handler) {
 	mux.HandleFunc("GET /api/auth/tidal/callback", h.TidalCallback)
 	mux.HandleFunc("GET /api/auth/tidal/status", h.TidalStatus)
 	mux.HandleFunc("POST /api/auth/tidal/logout", h.TidalLogout)
+
+	// Google Auth (YouTube Music)
+	mux.HandleFunc("GET /api/auth/google/login", h.GoogleLogin)
+	mux.HandleFunc("GET /api/auth/google/callback", h.GoogleCallback)
+	mux.HandleFunc("GET /api/auth/google/status", h.GoogleStatus)
+	mux.HandleFunc("POST /api/auth/google/logout", h.GoogleLogout)
+
+	// YouTube Music
+	mux.HandleFunc("GET /api/youtube/playlists", h.YouTubePlaylists)
+	mux.HandleFunc("POST /api/youtube/fetch", h.YouTubeFetch)
 
 	// Migration
 	mux.HandleFunc("POST /api/migrate", h.StartMigration)

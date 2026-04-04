@@ -1,6 +1,11 @@
-import type { Step } from "../../types";
+import type { Source, Step } from "../../types";
 
-const steps: { key: Step; label: string }[] = [
+interface StepDef {
+  key: Step;
+  label: string;
+}
+
+const spotifySteps: StepDef[] = [
   { key: "upload", label: "Upload CSV" },
   { key: "select", label: "Select" },
   { key: "connect-tidal", label: "Connect Tidal" },
@@ -8,11 +13,21 @@ const steps: { key: Step; label: string }[] = [
   { key: "done", label: "Done" },
 ];
 
+const youtubeSteps: StepDef[] = [
+  { key: "connect-source", label: "Connect YouTube" },
+  { key: "fetch-playlists", label: "Select" },
+  { key: "connect-tidal", label: "Connect Tidal" },
+  { key: "migrate", label: "Migrate" },
+  { key: "done", label: "Done" },
+];
+
 interface Props {
   current: Step;
+  source?: Source | null;
 }
 
-export function StepIndicator({ current }: Props) {
+export function StepIndicator({ current, source }: Props) {
+  const steps = source === "youtube-music" ? youtubeSteps : spotifySteps;
   const currentIdx = steps.findIndex((s) => s.key === current);
 
   return (

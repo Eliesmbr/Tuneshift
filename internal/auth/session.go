@@ -15,6 +15,7 @@ import (
 const (
 	spotifyCookieName = "tuneshift_spotify"
 	tidalCookieName   = "tuneshift_tidal"
+	googleCookieName  = "tuneshift_google"
 	stateCookieName   = "tuneshift_state"
 )
 

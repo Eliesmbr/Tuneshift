@@ -26,4 +26,12 @@ export interface ProgressEvent {
   total?: number;
 }
 
-export type Step = "upload" | "select" | "connect-tidal" | "migrate" | "done";
+export type Source = "spotify" | "youtube-music";
+
+export type Step = "upload" | "connect-source" | "fetch-playlists" | "select" | "connect-tidal" | "migrate" | "done";
+
+export interface YouTubePlaylist {
+  id: string;
+  name: string;
+  track_count: number;
+}

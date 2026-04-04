@@ -9,13 +9,14 @@ import { SelectionPanel } from "./components/library/SelectionPanel";
 import { ConnectButton } from "./components/auth/ConnectButton";
 import { MigrationProgressView } from "./components/migration/MigrationProgress";
 import { MigrationSummary } from "./components/migration/MigrationSummary";
+import { PlaylistPicker } from "./components/youtube/PlaylistPicker";
 import { ToastContainer, toast } from "./components/ui/Toast";
 import { Card } from "./components/ui/Card";
 import { Button } from "./components/ui/Button";
 import { useAuth } from "./hooks/useAuth";
 import { useMigration } from "./hooks/useMigration";
 import { api } from "./api/client";
-import type { Step, UploadedPlaylist } from "./types";
+import type { Source, Step, UploadedPlaylist } from "./types";
 
 const STORAGE_KEY = "tuneshift_upload";
 
@@ -25,6 +26,7 @@ interface PersistedState {
   totalTracks: number;
   selectedPlaylists: string[];
   sourceSelected: boolean;
+  selectedSource: Source | null;
 }
 
 function saveState(state: PersistedState) {
@@ -51,6 +53,7 @@ export default function App() {
   const restored = loadState();
 
   const [step, setStep] = useState<Step>("upload");
+  const [selectedSource, setSelectedSource] = useState<Source | null>(restored?.selectedSource ?? null);
   const [sourceSelected, setSourceSelected] = useState(restored?.sourceSelected ?? false);
   const [uploading, setUploading] = useState(false);
   const [uploadSessionId, setUploadSessionId] = useState<string | null>(restored?.uploadSessionId ?? null);
@@ -58,27 +61,81 @@ export default function App() {
   const [totalTracks, setTotalTracks] = useState(restored?.totalTracks ?? 0);
   const [selectedPlaylists, setSelectedPlaylists] = useState<string[]>(restored?.selectedPlaylists ?? []);
 
+  // Detect OAuth return for YouTube Music
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("source") === "youtube-music") {
+      setSelectedSource("youtube-music");
+      setSourceSelected(true);
+      saveState({
+        uploadSessionId: "",
+        playlists: [],
+        totalTracks: 0,
+        selectedPlaylists: [],
+        sourceSelected: true,
+        selectedSource: "youtube-music",
+      });
+      window.history.replaceState({}, "", "/");
+    }
+  }, []);
+
   useEffect(() => {
     if (auth.loading) return;
+
     if (migration.done) {
       setStep("done");
     } else if (migration.running) {
       setStep("migrate");
     } else if (selectedPlaylists.length > 0) {
       setStep("connect-tidal");
-    } else if (playlists.length > 0) {
-      setStep("select");
+    } else if (selectedSource === "youtube-music") {
+      // YouTube Music flow
+      if (playlists.length > 0) {
+        // Playlists already fetched, go to tidal connect
+        setStep("connect-tidal");
+      } else if (auth.google.connected) {
+        setStep("fetch-playlists");
+      } else if (sourceSelected) {
+        setStep("connect-source");
+      } else {
+        setStep("upload");
+      }
     } else {
-      setStep("upload");
+      // Spotify flow
+      if (playlists.length > 0) {
+        setStep("select");
+      } else {
+        setStep("upload");
+      }
     }
   }, [
     auth.loading,
     auth.tidal.connected,
+    auth.google.connected,
     playlists.length,
     selectedPlaylists.length,
+    selectedSource,
+    sourceSelected,
     migration.running,
     migration.done,
   ]);
+
+  const handleSelectSource = useCallback((source: Source) => {
+    setSelectedSource(source);
+    if (source === "spotify") {
+      setSourceSelected(true);
+    } else if (source === "youtube-music") {
+      setSourceSelected(true);
+      saveState({
+        uploadSessionId: "",
+        playlists: [],
+        totalTracks: 0,
+        selectedPlaylists: [],
+        sourceSelected: true,
+        selectedSource: source,
+      });
+    }
+  }, []);
 
   const handleUpload = useCallback(async (files: File[]) => {
     setUploading(true);
@@ -94,6 +151,7 @@ export default function App() {
         totalTracks: result.total_tracks,
         selectedPlaylists: [],
         sourceSelected: true,
+        selectedSource: "spotify",
       });
     } catch (err) {
       toast(err instanceof Error ? err.message : "Upload failed", "error");
@@ -101,6 +159,26 @@ export default function App() {
       setUploading(false);
     }
   }, []);
+
+  const handleYouTubeFetched = useCallback(
+    (sessionId: string, fetchedPlaylists: UploadedPlaylist[], total: number) => {
+      setUploadSessionId(sessionId);
+      setPlaylists(fetchedPlaylists);
+      setTotalTracks(total);
+      // Auto-select all playlists since user already picked them in the picker
+      const allNames = fetchedPlaylists.map((p) => p.name);
+      setSelectedPlaylists(allNames);
+      saveState({
+        uploadSessionId: sessionId,
+        playlists: fetchedPlaylists,
+        totalTracks: total,
+        selectedPlaylists: allNames,
+        sourceSelected: true,
+        selectedSource: "youtube-music",
+      });
+    },
+    [],
+  );
 
   const handleSelection = useCallback(
     (names: string[]) => {
@@ -112,10 +190,11 @@ export default function App() {
           totalTracks,
           selectedPlaylists: names,
           sourceSelected: true,
+          selectedSource: selectedSource,
         });
       }
     },
-    [uploadSessionId, playlists, totalTracks],
+    [uploadSessionId, playlists, totalTracks, selectedSource],
   );
 
   const handleStartMigration = useCallback(() => {
@@ -145,9 +224,9 @@ export default function App() {
       <Header onLogoClick={handleStartOver} />
       <ToastContainer />
       <main className="mx-auto max-w-2xl px-6 py-8">
-        <StepIndicator current={step} />
+        <StepIndicator current={step} source={selectedSource} />
 
-        {/* Step 1: Upload CSV */}
+        {/* Source selection / Upload (Spotify) */}
         {step === "upload" && (
           <div className="space-y-8">
             {!sourceSelected ? (
@@ -165,7 +244,7 @@ export default function App() {
                 </div>
 
                 <HeroAnimation />
-                <SourceSelector onSelectSpotify={() => setSourceSelected(true)} />
+                <SourceSelector onSelectSource={handleSelectSource} />
               </>
             ) : (
               <>
@@ -214,7 +293,41 @@ export default function App() {
           </div>
         )}
 
-        {/* Step 2: Select playlists */}
+        {/* YouTube Music: Connect Google */}
+        {step === "connect-source" && (
+          <div className="space-y-6">
+            <div className="text-center animate-[fadeIn_0.3s_ease-out]">
+              <h2 className="text-2xl font-bold mb-2">Connect YouTube Music</h2>
+              <p className="text-surface-200 text-sm">
+                Sign in with your Google account to access your YouTube Music playlists.
+              </p>
+            </div>
+
+            <ConnectButton
+              service="youtube-music"
+              connected={auth.google.connected}
+              userName={auth.google.user?.name}
+              onConnect={auth.connectGoogle}
+              onDisconnect={auth.disconnectGoogle}
+            />
+          </div>
+        )}
+
+        {/* YouTube Music: Fetch & Select playlists */}
+        {step === "fetch-playlists" && (
+          <div className="space-y-6">
+            <div className="text-center animate-[fadeIn_0.3s_ease-out]">
+              <h2 className="text-2xl font-bold mb-2">Select playlists to migrate</h2>
+              <p className="text-surface-200 text-sm">
+                Choose which YouTube Music playlists to transfer to Tidal.
+              </p>
+            </div>
+
+            <PlaylistPicker onFetched={handleYouTubeFetched} />
+          </div>
+        )}
+
+        {/* Step 2: Select playlists (Spotify only) */}
         {step === "select" && (
           <div className="space-y-6">
             <PlaylistPreview playlists={playlists} totalTracks={totalTracks} />
@@ -226,7 +339,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Step 3: Connect Tidal */}
+        {/* Connect Tidal */}
         {step === "connect-tidal" && (
           <div className="space-y-6">
             <Card className="p-4">
@@ -263,7 +376,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Step 4: Migration in progress */}
+        {/* Migration in progress */}
         {step === "migrate" && (
           <MigrationProgressView
             events={migration.events}
@@ -272,7 +385,7 @@ export default function App() {
           />
         )}
 
-        {/* Step 5: Done */}
+        {/* Done */}
         {step === "done" && (
           <MigrationSummary
             events={migration.events}
@@ -282,7 +395,7 @@ export default function App() {
 
         <footer className="mt-16 pb-8 text-center text-xs text-surface-700">
           <p>
-            Tuneshift is free and open source. Your CSV files are parsed
+            Tuneshift is free and open source. Your data is parsed
             server-side and never stored permanently.
           </p>
         </footer>

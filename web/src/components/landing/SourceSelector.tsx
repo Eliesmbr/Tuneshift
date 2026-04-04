@@ -1,13 +1,17 @@
-interface Source {
+import type { Source } from "../../types";
+
+interface SourceItem {
   name: string;
-  icon: React.ReactNode;
+  id: Source | null;
   available: boolean;
   color: string;
+  icon: React.ReactNode;
 }
 
-const sources: Source[] = [
+const sources: SourceItem[] = [
   {
     name: "Spotify",
+    id: "spotify",
     available: true,
     color: "text-spotify-green border-spotify-green/30 bg-spotify-green/5",
     icon: (
@@ -18,6 +22,7 @@ const sources: Source[] = [
   },
   {
     name: "Apple Music",
+    id: null,
     available: false,
     color: "text-pink-400 border-pink-400/20 bg-pink-400/5",
     icon: (
@@ -28,7 +33,8 @@ const sources: Source[] = [
   },
   {
     name: "YouTube Music",
-    available: false,
+    id: "youtube-music",
+    available: true,
     color: "text-red-400 border-red-400/20 bg-red-400/5",
     icon: (
       <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
@@ -38,6 +44,7 @@ const sources: Source[] = [
   },
   {
     name: "Amazon Music",
+    id: null,
     available: false,
     color: "text-blue-400 border-blue-400/20 bg-blue-400/5",
     icon: (
@@ -49,10 +56,10 @@ const sources: Source[] = [
 ];
 
 interface Props {
-  onSelectSpotify: () => void;
+  onSelectSource: (source: Source) => void;
 }
 
-export function SourceSelector({ onSelectSpotify }: Props) {
+export function SourceSelector({ onSelectSource }: Props) {
   return (
     <div className="space-y-3">
       <h3 className="text-sm font-semibold text-surface-200 uppercase tracking-wider text-center">
@@ -62,7 +69,7 @@ export function SourceSelector({ onSelectSpotify }: Props) {
         {sources.map((source) => (
           <button
             key={source.name}
-            onClick={source.available ? onSelectSpotify : undefined}
+            onClick={source.available && source.id ? () => onSelectSource(source.id!) : undefined}
             disabled={!source.available}
             className={`relative flex flex-col items-center gap-2 rounded-xl border p-4 transition-all ${
               source.available

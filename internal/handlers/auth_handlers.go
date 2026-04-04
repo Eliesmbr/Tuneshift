@@ -84,3 +84,78 @@ func (h *Handler) TidalLogout(w http.ResponseWriter, r *http.Request) {
 	h.sessions.ClearCookie(w, "tuneshift_tidal")
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
+
+// Google Auth
+
+func (h *Handler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
+	if h.googleAuth == nil {
+		writeError(w, http.StatusNotFound, "YouTube Music not configured")
+		return
+	}
+
+	state, err := auth.GenerateState()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to generate state")
+		return
+	}
+
+	if err := h.sessions.SetStateCookie(w, state, "", h.isSecure()); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to set state cookie")
+		return
+	}
+	http.Redirect(w, r, h.googleAuth.AuthURL(state), http.StatusTemporaryRedirect)
+}
+
+func (h *Handler) GoogleCallback(w http.ResponseWriter, r *http.Request) {
+	code := r.URL.Query().Get("code")
+	state := r.URL.Query().Get("state")
+	errParam := r.URL.Query().Get("error")
+
+	if errParam != "" {
+		http.Redirect(w, r, "/?error=google_"+url.QueryEscape(errParam), http.StatusTemporaryRedirect)
+		return
+	}
+
+	savedState, _, err := h.sessions.GetStateCookie(r)
+	if err != nil || savedState != state {
+		writeError(w, http.StatusBadRequest, "invalid state parameter")
+		return
+	}
+
+	token, err := h.googleAuth.ExchangeCode(code)
+	if err != nil {
+		log.Printf("Google code exchange failed: %v", err)
+		writeError(w, http.StatusInternalServerError, "failed to connect to YouTube Music")
+		return
+	}
+
+	if err := h.sessions.SetTokenCookie(w, "tuneshift_google", token, h.isSecure()); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to save session")
+		return
+	}
+
+	h.sessions.ClearCookie(w, "tuneshift_state")
+	http.Redirect(w, r, "/?source=youtube-music", http.StatusTemporaryRedirect)
+}
+
+func (h *Handler) GoogleStatus(w http.ResponseWriter, r *http.Request) {
+	token, err := h.sessions.GetTokenCookie(r, "tuneshift_google")
+	if err != nil {
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"connected": false,
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"connected": true,
+		"user": map[string]string{
+			"name": token.UserName,
+		},
+	})
+}
+
+func (h *Handler) GoogleLogout(w http.ResponseWriter, r *http.Request) {
+	h.sessions.ClearCookie(w, "tuneshift_google")
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}

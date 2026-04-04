@@ -51,4 +51,30 @@ export const api = {
 
   migrationProgressURL: (sessionId: string) =>
     `${API_BASE}/migrate/progress?session_id=${sessionId}`,
+
+  // Google / YouTube Music
+  googleStatus: () =>
+    fetchJSON<{ connected: boolean; user?: { name: string } }>(
+      "/auth/google/status",
+    ),
+  googleLogout: () =>
+    fetchJSON<void>("/auth/google/logout", { method: "POST" }),
+
+  youtubeListPlaylists: () =>
+    fetchJSON<{
+      playlists: Array<{ id: string; name: string; track_count: number }>;
+    }>("/youtube/playlists"),
+
+  youtubeFetchPlaylists: (
+    playlists: Array<{ id: string; name: string; track_count: number }>,
+  ) =>
+    fetchJSON<{
+      session_id: string;
+      playlists: Array<{ name: string; track_count: number }>;
+      total_tracks: number;
+    }>("/youtube/fetch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playlists }),
+    }),
 };

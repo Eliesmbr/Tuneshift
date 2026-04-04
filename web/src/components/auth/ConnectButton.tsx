@@ -1,7 +1,7 @@
 import { Button } from "../ui/Button";
 
 interface Props {
-  service: "spotify" | "tidal";
+  service: "spotify" | "tidal" | "youtube-music";
   connected: boolean;
   userName?: string;
   onConnect: () => void;
@@ -20,12 +20,26 @@ const TidalIcon = () => (
   </svg>
 );
 
+const YouTubeIcon = () => (
+  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 0C5.376 0 0 5.376 0 12s5.376 12 12 12 12-5.376 12-12S18.624 0 12 0zm0 19.104c-3.924 0-7.104-3.18-7.104-7.104S8.076 4.896 12 4.896s7.104 3.18 7.104 7.104-3.18 7.104-7.104 7.104zm0-13.332c-3.432 0-6.228 2.796-6.228 6.228S8.568 18.228 12 18.228 18.228 15.432 18.228 12 15.432 5.772 12 5.772zM9.684 15.54V8.46L15.816 12l-6.132 3.54z" />
+  </svg>
+);
+
+const serviceConfig = {
+  spotify: { label: "Spotify", icon: <SpotifyIcon />, variant: "spotify" as const },
+  tidal: { label: "Tidal", icon: <TidalIcon />, variant: "tidal" as const },
+  "youtube-music": { label: "YouTube Music", icon: <YouTubeIcon />, variant: "youtube" as const },
+};
+
 export function ConnectButton({ service, connected, userName, onConnect, onDisconnect }: Props) {
+  const config = serviceConfig[service];
+
   if (connected) {
     return (
       <div className="flex items-center gap-4 rounded-2xl border border-surface-800 bg-surface-900/50 px-5 py-4">
         <div className="flex-1">
-          <p className="text-xs text-surface-200">Connected to {service === "spotify" ? "Spotify" : "Tidal"}</p>
+          <p className="text-xs text-surface-200">Connected to {config.label}</p>
           <p className="font-semibold">{userName}</p>
         </div>
         <Button variant="secondary" onClick={onDisconnect} className="text-xs px-3 py-1.5">
@@ -37,12 +51,12 @@ export function ConnectButton({ service, connected, userName, onConnect, onDisco
 
   return (
     <Button
-      variant={service}
+      variant={config.variant}
       onClick={onConnect}
-      icon={service === "spotify" ? <SpotifyIcon /> : <TidalIcon />}
+      icon={config.icon}
       className="w-full py-4 text-base"
     >
-      Connect {service === "spotify" ? "Spotify" : "Tidal"}
+      Connect {config.label}
     </Button>
   );
 }
