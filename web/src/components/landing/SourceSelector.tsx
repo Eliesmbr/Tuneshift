@@ -56,38 +56,44 @@ const sources: SourceItem[] = [
 ];
 
 interface Props {
+  selected: Source | null;
   onSelectSource: (source: Source) => void;
 }
 
-export function SourceSelector({ onSelectSource }: Props) {
+export function SourceSelector({ selected, onSelectSource }: Props) {
   return (
     <div className="space-y-3">
       <h3 className="text-sm font-semibold text-surface-200 uppercase tracking-wider text-center">
         Choose your source
       </h3>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {sources.map((source) => (
-          <button
-            key={source.name}
-            onClick={source.available && source.id ? () => onSelectSource(source.id!) : undefined}
-            disabled={!source.available}
-            className={`relative flex flex-col items-center gap-2 rounded-xl border p-4 transition-all ${
-              source.available
-                ? `${source.color} hover:scale-105 cursor-pointer`
-                : "border-surface-800 bg-surface-900/30 text-surface-700 cursor-not-allowed opacity-50"
-            }`}
-          >
-            <span className={source.available ? "" : "opacity-40"}>
-              {source.icon}
-            </span>
-            <span className="text-xs font-medium">{source.name}</span>
-            {!source.available && (
-              <span className="absolute -top-2 -right-2 rounded-full bg-surface-800 px-2 py-0.5 text-[10px] font-semibold text-surface-200 border border-surface-700">
-                Soon
+        {sources.map((source) => {
+          const isSelected = source.id === selected;
+          return (
+            <button
+              key={source.name}
+              onClick={source.available && source.id ? () => onSelectSource(source.id!) : undefined}
+              disabled={!source.available}
+              className={`relative flex flex-col items-center gap-2 rounded-xl border p-4 transition-all ${
+                !source.available
+                  ? "border-surface-800 bg-surface-900/30 text-surface-700 cursor-not-allowed opacity-50"
+                  : isSelected
+                    ? `${source.color} scale-105 ring-2 ring-current cursor-pointer`
+                    : `${source.color} hover:scale-105 cursor-pointer`
+              }`}
+            >
+              <span className={source.available ? "" : "opacity-40"}>
+                {source.icon}
               </span>
-            )}
-          </button>
-        ))}
+              <span className="text-xs font-medium">{source.name}</span>
+              {!source.available && (
+                <span className="absolute -top-2 -right-2 rounded-full bg-surface-800 px-2 py-0.5 text-[10px] font-semibold text-surface-200 border border-surface-700">
+                  Soon
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

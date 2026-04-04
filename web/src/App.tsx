@@ -53,7 +53,7 @@ export default function App() {
   const restored = loadState();
 
   const [step, setStep] = useState<Step>("upload");
-  const [selectedSource, setSelectedSource] = useState<Source | null>(restored?.selectedSource ?? null);
+  const [selectedSource, setSelectedSource] = useState<Source | null>(restored?.selectedSource ?? "spotify");
   const [sourceSelected, setSourceSelected] = useState(restored?.sourceSelected ?? false);
   const [uploading, setUploading] = useState(false);
   const [uploadSessionId, setUploadSessionId] = useState<string | null>(restored?.uploadSessionId ?? null);
@@ -122,20 +122,22 @@ export default function App() {
 
   const handleSelectSource = useCallback((source: Source) => {
     setSelectedSource(source);
-    if (source === "spotify") {
-      setSourceSelected(true);
-    } else if (source === "youtube-music") {
-      setSourceSelected(true);
+  }, []);
+
+  const handleConfirmSource = useCallback(() => {
+    if (!selectedSource) return;
+    setSourceSelected(true);
+    if (selectedSource === "youtube-music") {
       saveState({
         uploadSessionId: "",
         playlists: [],
         totalTracks: 0,
         selectedPlaylists: [],
         sourceSelected: true,
-        selectedSource: source,
+        selectedSource: selectedSource,
       });
     }
-  }, []);
+  }, [selectedSource]);
 
   const handleUpload = useCallback(async (files: File[]) => {
     setUploading(true);
@@ -243,8 +245,23 @@ export default function App() {
                   </p>
                 </div>
 
-                <HeroAnimation />
-                <SourceSelector onSelectSource={handleSelectSource} />
+                <HeroAnimation source={selectedSource} />
+                <SourceSelector selected={selectedSource} onSelectSource={handleSelectSource} />
+
+                {selectedSource && (
+                  <div className="flex justify-center animate-[fadeIn_0.3s_ease-out]">
+                    <button
+                      onClick={handleConfirmSource}
+                      className={`px-8 py-3 text-base font-semibold rounded-xl transition-all hover:opacity-90 cursor-pointer ${
+                        selectedSource === "spotify"
+                          ? "bg-gradient-to-r from-spotify-green to-tidal-blue text-black"
+                          : "bg-gradient-to-r from-red-500 to-tidal-blue text-white"
+                      }`}
+                    >
+                      Start migration from {selectedSource === "spotify" ? "Spotify" : "YouTube Music"}
+                    </button>
+                  </div>
+                )}
               </>
             ) : (
               <>
