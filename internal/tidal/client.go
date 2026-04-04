@@ -75,9 +75,12 @@ func (c *Client) doRequestOnce(method, url string, body interface{}, result inte
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		log.Printf("[tidal] %s %s -> %v", method, url, err)
 		return err
 	}
 	defer resp.Body.Close()
+
+	log.Printf("[tidal] %s %s -> %d", method, url, resp.StatusCode)
 
 	if resp.StatusCode == http.StatusTooManyRequests {
 		return &rateLimitError{}
@@ -85,6 +88,7 @@ func (c *Client) doRequestOnce(method, url string, body interface{}, result inte
 
 	if resp.StatusCode >= 400 {
 		respBody, _ := io.ReadAll(resp.Body)
+		log.Printf("[tidal] response body: %s", string(respBody))
 		return fmt.Errorf("tidal API error %d: %s", resp.StatusCode, string(respBody))
 	}
 
