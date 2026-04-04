@@ -245,6 +245,12 @@ export default function App() {
 
                 <HeroAnimation />
                 <SourceSelector onSelectSource={handleSelectSource} />
+
+                {selectedSource === "youtube-music" && (
+                  <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 px-4 py-3 text-sm text-yellow-200 text-center animate-[fadeIn_0.3s_ease-out]">
+                    YouTube Music support is currently awaiting approval from Google. You may not be able to sign in yet.
+                  </div>
+                )}
               </>
             ) : (
               <>
