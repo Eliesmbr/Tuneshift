@@ -393,10 +393,13 @@ export default function App() {
           />
         )}
 
-        <footer className="mt-16 pb-8 text-center text-xs text-surface-700">
+        <footer className="mt-16 pb-8 text-center text-xs text-surface-700 space-y-2">
           <p>
             Tuneshift is free and open source. Your data is parsed
             server-side and never stored permanently.
+          </p>
+          <p>
+            <a href="/privacy" className="hover:text-surface-200 underline">Privacy Policy</a>
           </p>
         </footer>
       </main>
