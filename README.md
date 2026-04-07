@@ -8,27 +8,43 @@ No account needed. No data stored. Just upload, connect, and migrate.
   <img src="assets/screenshot.png" alt="Tuneshift screenshot" width="700">
 </p>
 
+## Supported sources
+
+| Source | Method |
+|--------|--------|
+| Spotify | CSV export via [Exportify](https://exportify.app) |
+| YouTube Music | ZIP export via [Google Takeout](https://takeout.google.com) |
+| Apple Music | Coming soon |
+| Amazon Music | No API available |
+
 ## How it works
 
 ```
-Export playlists from Spotify  ->  Upload CSV  ->  Connect Tidal  ->  Done
-         (via Exportify)
+Export your playlists  ->  Upload file  ->  Connect Tidal  ->  Done
 ```
 
-1. Export your Spotify playlists at [exportify.app](https://exportify.app)
+### Spotify
+
+1. Export your playlists at [exportify.app](https://exportify.app)
 2. Upload the CSV files to Tuneshift
 3. Select which playlists to migrate
 4. Connect your Tidal account
 5. Hit migrate - tracks are matched by ISRC, playlists created on Tidal
 
+### YouTube Music
+
+1. Go to [takeout.google.com](https://takeout.google.com)
+2. Deselect all, then select only "YouTube and YouTube Music"
+3. Under "All YouTube data included", select **Music library** and **Playlists**
+4. Create the export, wait for the email, download the ZIP
+5. Upload the ZIP to Tuneshift and continue as above
+
 ## Track matching
 
 Tuneshift uses a two-step matching strategy:
 
-- **ISRC lookup** - Most tracks have an International Standard Recording Code. This gives exact matches.
+- **ISRC lookup** - Most tracks have an International Standard Recording Code. This gives exact matches (Spotify CSVs include ISRCs).
 - **Fuzzy search** - Falls back to searching by track name + artist with smart normalization (strips remaster tags, handles spelling variations, duration matching).
-
-In testing, **91/91 tracks** matched successfully with ISRC data from Exportify.
 
 ## Self-hosting
 
@@ -79,7 +95,7 @@ The app runs on port `8080`. Put a reverse proxy (Caddy, Nginx) in front for HTT
 ```
 
 - **Backend:** Go (standard library, zero dependencies)
-- **Frontend:** React + Tailwind CSS
+- **Frontend:** React + Tailwind CSS v4
 - **Auth:** Tidal OAuth 2.0 with PKCE
 - **Sessions:** AES-256-GCM encrypted HTTP-only cookies
 - **Progress:** Server-Sent Events (SSE) for real-time updates
@@ -93,23 +109,21 @@ The app runs on port `8080`. Put a reverse proxy (Caddy, Nginx) in front for HTT
 - CSRF protection via OAuth state parameter + SameSite cookies
 - Rate limiting on all API endpoints
 - Container runs as non-root user
-- CSV files parsed in memory, auto-deleted after 30 minutes
+- Uploaded files parsed in memory, auto-deleted after 30 minutes
 
-## Why not use the Spotify API directly?
+## Why not use Spotify/YouTube APIs directly?
 
 > [!NOTE]
-> Since February 2026, Spotify requires a Premium subscription for Web API access and limits new developer apps to just 5 manually allowlisted users. Extended quota mode (unlimited users) is only available to registered companies with 250k+ monthly active users.
+> **Spotify:** Since February 2026, Spotify requires a Premium subscription for Web API access and limits new developer apps to just 5 manually allowlisted users. [Exportify](https://exportify.app) was registered before these restrictions and is grandfathered in with full API access.
 >
-> This makes it impossible for new open-source projects to use the Spotify API directly. Tuneshift uses [Exportify](https://exportify.app) as a workaround - Exportify's Spotify app was registered before these restrictions and is grandfathered in with full API access. Users export their playlists as CSV files through Exportify, then upload them to Tuneshift for migration to Tidal.
->
-> More details: [Spotify February 2026 Migration Guide](https://developer.spotify.com/documentation/web-api/tutorials/february-2026-migration-guide)
+> **YouTube Music:** Google requires an extended CASA (Cloud Application Security Assessment) security audit for production OAuth apps - disproportionate for a small open-source project. [Google Takeout](https://takeout.google.com) lets users export their own data directly, no API needed.
 
 ## Tech stack
 
 | Component | Technology |
 |-----------|-----------|
-| Backend | Go 1.22+ (net/http) |
-| Frontend | React 19, Tailwind CSS 3 |
+| Backend | Go 1.24 (net/http) |
+| Frontend | React 19, Tailwind CSS v4 |
 | Build | Multi-stage Docker (Node + Go + Alpine) |
 | Auth | OAuth 2.0 + PKCE |
 | Encryption | AES-256-GCM |
