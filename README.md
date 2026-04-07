@@ -5,7 +5,7 @@
 No account needed. No data stored. Just upload, connect, and migrate.
 
 <p align="center">
-  <img src="assets/screenshot.png" alt="Tuneshift screenshot" width="700">
+  <img src="assets/screenshot.png?v=2" alt="Tuneshift screenshot" width="700">
 </p>
 
 ## Supported sources
