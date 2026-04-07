@@ -21,24 +21,22 @@ type uploadEntry struct {
 }
 
 type Handler struct {
-	sessions   *auth.SessionManager
-	tidalAuth  *auth.TidalAuth
-	googleAuth *auth.GoogleAuth
-	cfg        *config.Config
+	sessions  *auth.SessionManager
+	tidalAuth *auth.TidalAuth
+	cfg       *config.Config
 
 	mu        sync.Mutex
 	reporters map[string]*migration.ProgressReporter
 	uploads   map[string]uploadEntry
 }
 
-func New(sessions *auth.SessionManager, tidalAuth *auth.TidalAuth, googleAuth *auth.GoogleAuth, cfg *config.Config) *Handler {
+func New(sessions *auth.SessionManager, tidalAuth *auth.TidalAuth, cfg *config.Config) *Handler {
 	h := &Handler{
-		sessions:   sessions,
-		tidalAuth:  tidalAuth,
-		googleAuth: googleAuth,
-		cfg:        cfg,
-		reporters:  make(map[string]*migration.ProgressReporter),
-		uploads:    make(map[string]uploadEntry),
+		sessions:  sessions,
+		tidalAuth: tidalAuth,
+		cfg:       cfg,
+		reporters: make(map[string]*migration.ProgressReporter),
+		uploads:   make(map[string]uploadEntry),
 	}
 
 	// Cleanup expired uploads every 5 minutes

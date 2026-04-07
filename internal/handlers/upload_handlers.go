@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"io"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -8,6 +9,7 @@ import (
 
 	"tuneshift/internal/source"
 	"tuneshift/internal/source/exportify"
+	"tuneshift/internal/source/takeout"
 )
 
 const (
@@ -106,4 +108,71 @@ func (h *Handler) getUploadedPlaylists(sessionID string) ([]source.Playlist, boo
 		return nil, false
 	}
 	return entry.playlists, true
+}
+
+func (h *Handler) UploadTakeout(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
+
+	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
+		writeError(w, http.StatusBadRequest, "file too large (max 50MB)")
+		return
+	}
+
+	files := r.MultipartForm.File["file"]
+	if len(files) == 0 {
+		writeError(w, http.StatusBadRequest, "no file uploaded")
+		return
+	}
+
+	fileHeader := files[0]
+	if !strings.HasSuffix(strings.ToLower(fileHeader.Filename), ".zip") {
+		writeError(w, http.StatusBadRequest, "expected a .zip file")
+		return
+	}
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to read file")
+		return
+	}
+	defer file.Close()
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to read file")
+		return
+	}
+
+	playlists, err := takeout.ParseZip(data)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	type playlistSummary struct {
+		Name       string `json:"name"`
+		TrackCount int    `json:"track_count"`
+	}
+
+	summaries := make([]playlistSummary, len(playlists))
+	totalTracks := 0
+	for i, pl := range playlists {
+		summaries[i] = playlistSummary{
+			Name:       pl.Name,
+			TrackCount: len(pl.Tracks),
+		}
+		totalTracks += len(pl.Tracks)
+	}
+
+	sessionID, err := h.storeUploadedPlaylists(playlists)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to store upload")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"session_id":   sessionID,
+		"playlists":    summaries,
+		"total_tracks": totalTracks,
+	})
 }
