@@ -14,8 +14,8 @@ const spotifySteps: StepDef[] = [
 ];
 
 const youtubeSteps: StepDef[] = [
-  { key: "connect-source", label: "Connect YouTube" },
-  { key: "fetch-playlists", label: "Select" },
+  { key: "upload", label: "Upload ZIP" },
+  { key: "select", label: "Select" },
   { key: "connect-tidal", label: "Connect Tidal" },
   { key: "migrate", label: "Migrate" },
   { key: "done", label: "Done" },

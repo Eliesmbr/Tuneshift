@@ -9,7 +9,7 @@ import { SelectionPanel } from "./components/library/SelectionPanel";
 import { ConnectButton } from "./components/auth/ConnectButton";
 import { MigrationProgressView } from "./components/migration/MigrationProgress";
 import { MigrationSummary } from "./components/migration/MigrationSummary";
-import { PlaylistPicker } from "./components/youtube/PlaylistPicker";
+import { TakeoutUpload } from "./components/upload/TakeoutUpload";
 import { ToastContainer, toast } from "./components/ui/Toast";
 import { Card } from "./components/ui/Card";
 import { Button } from "./components/ui/Button";
@@ -61,24 +61,6 @@ export default function App() {
   const [totalTracks, setTotalTracks] = useState(restored?.totalTracks ?? 0);
   const [selectedPlaylists, setSelectedPlaylists] = useState<string[]>(restored?.selectedPlaylists ?? []);
 
-  // Detect OAuth return for YouTube Music
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("source") === "youtube-music") {
-      setSelectedSource("youtube-music");
-      setSourceSelected(true);
-      saveState({
-        uploadSessionId: "",
-        playlists: [],
-        totalTracks: 0,
-        selectedPlaylists: [],
-        sourceSelected: true,
-        selectedSource: "youtube-music",
-      });
-      window.history.replaceState({}, "", "/");
-    }
-  }, []);
-
   useEffect(() => {
     if (auth.loading) return;
 
@@ -88,34 +70,16 @@ export default function App() {
       setStep("migrate");
     } else if (selectedPlaylists.length > 0) {
       setStep("connect-tidal");
-    } else if (selectedSource === "youtube-music") {
-      // YouTube Music flow
-      if (playlists.length > 0) {
-        // Playlists already fetched, go to tidal connect
-        setStep("connect-tidal");
-      } else if (auth.google.connected) {
-        setStep("fetch-playlists");
-      } else if (sourceSelected) {
-        setStep("connect-source");
-      } else {
-        setStep("upload");
-      }
+    } else if (playlists.length > 0) {
+      setStep("select");
     } else {
-      // Spotify flow
-      if (playlists.length > 0) {
-        setStep("select");
-      } else {
-        setStep("upload");
-      }
+      setStep("upload");
     }
   }, [
     auth.loading,
     auth.tidal.connected,
-    auth.google.connected,
     playlists.length,
     selectedPlaylists.length,
-    selectedSource,
-    sourceSelected,
     migration.running,
     migration.done,
   ]);
@@ -127,16 +91,6 @@ export default function App() {
   const handleConfirmSource = useCallback(() => {
     if (!selectedSource) return;
     setSourceSelected(true);
-    if (selectedSource === "youtube-music") {
-      saveState({
-        uploadSessionId: "",
-        playlists: [],
-        totalTracks: 0,
-        selectedPlaylists: [],
-        sourceSelected: true,
-        selectedSource: selectedSource,
-      });
-    }
   }, [selectedSource]);
 
   const handleUpload = useCallback(async (files: File[]) => {
@@ -162,25 +116,28 @@ export default function App() {
     }
   }, []);
 
-  const handleYouTubeFetched = useCallback(
-    (sessionId: string, fetchedPlaylists: UploadedPlaylist[], total: number) => {
-      setUploadSessionId(sessionId);
-      setPlaylists(fetchedPlaylists);
-      setTotalTracks(total);
-      // Auto-select all playlists since user already picked them in the picker
-      const allNames = fetchedPlaylists.map((p) => p.name);
-      setSelectedPlaylists(allNames);
+  const handleTakeoutUpload = useCallback(async (file: File) => {
+    setUploading(true);
+    try {
+      const result = await api.uploadTakeout(file);
+      setUploadSessionId(result.session_id);
+      setPlaylists(result.playlists);
+      setTotalTracks(result.total_tracks);
+      toast(`${result.playlists.length} playlist${result.playlists.length !== 1 ? "s" : ""} loaded`, "success");
       saveState({
-        uploadSessionId: sessionId,
-        playlists: fetchedPlaylists,
-        totalTracks: total,
-        selectedPlaylists: allNames,
+        uploadSessionId: result.session_id,
+        playlists: result.playlists,
+        totalTracks: result.total_tracks,
+        selectedPlaylists: [],
         sourceSelected: true,
         selectedSource: "youtube-music",
       });
-    },
-    [],
-  );
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Upload failed", "error");
+    } finally {
+      setUploading(false);
+    }
+  }, []);
 
   const handleSelection = useCallback(
     (names: string[]) => {
@@ -228,7 +185,7 @@ export default function App() {
       <main className="mx-auto max-w-2xl px-6 py-8">
         <StepIndicator current={step} source={selectedSource} />
 
-        {/* Source selection / Upload (Spotify) */}
+        {/* Source selection / Upload */}
         {step === "upload" && (
           <div className="space-y-8">
             {!sourceSelected ? (
@@ -249,8 +206,10 @@ export default function App() {
                 <SourceSelector selected={selectedSource} onSelectSource={handleSelectSource} />
 
                 {selectedSource === "youtube-music" && (
-                  <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 px-4 py-3 text-sm text-yellow-200 text-center animate-[fadeIn_0.3s_ease-out]">
-                    YouTube Music support is currently awaiting approval from Google. You may not be able to sign in yet.
+                  <div className="rounded-xl border border-surface-700/50 bg-surface-900/50 px-4 py-3 text-sm text-surface-200 text-center animate-[fadeIn_0.3s_ease-out]">
+                    YouTube's API requires a costly security audit for public apps, so I use{" "}
+                    <a href="https://takeout.google.com" target="_blank" rel="noopener noreferrer" className="text-red-400 hover:underline">Google Takeout</a>{" "}
+                    instead — your data, exported directly by Google.
                   </div>
                 )}
 
@@ -268,6 +227,48 @@ export default function App() {
                     </button>
                   </div>
                 )}
+              </>
+            ) : selectedSource === "youtube-music" ? (
+              <>
+                <div className="text-center animate-[fadeIn_0.3s_ease-out]">
+                  <h2 className="text-2xl font-bold mb-2">Upload your YouTube Music data</h2>
+                  <p className="text-surface-200 text-sm">
+                    Export your data at{" "}
+                    <a
+                      href="https://takeout.google.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-red-400 hover:underline"
+                    >
+                      takeout.google.com
+                    </a>{" "}
+                    and upload the ZIP file below.
+                  </p>
+                </div>
+
+                <TakeoutUpload onUpload={handleTakeoutUpload} loading={uploading} />
+
+                <Card className="p-4 animate-[slideUp_0.4s_ease-out_0.2s_both]">
+                  <h3 className="text-sm font-semibold mb-3">How it works</h3>
+                  <ol className="space-y-2 text-sm text-surface-200">
+                    <li className="flex gap-3">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-800 text-xs font-bold text-white">1</span>
+                      <span>Go to <a href="https://takeout.google.com" target="_blank" rel="noopener noreferrer" className="text-red-400 hover:underline">takeout.google.com</a></span>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-800 text-xs font-bold text-white">2</span>
+                      <span>Click "Deselect all", then select only "YouTube and YouTube Music"</span>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-800 text-xs font-bold text-white">3</span>
+                      <span>Click "All YouTube data included" and select <strong>Music library</strong> and <strong>Playlists</strong></span>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-800 text-xs font-bold text-white">4</span>
+                      <span>Create the export, wait for the email, then upload the ZIP here</span>
+                    </li>
+                  </ol>
+                </Card>
               </>
             ) : (
               <>
@@ -310,47 +311,12 @@ export default function App() {
                     </li>
                   </ol>
                 </Card>
-
               </>
             )}
           </div>
         )}
 
-        {/* YouTube Music: Connect Google */}
-        {step === "connect-source" && (
-          <div className="space-y-6">
-            <div className="text-center animate-[fadeIn_0.3s_ease-out]">
-              <h2 className="text-2xl font-bold mb-2">Connect YouTube Music</h2>
-              <p className="text-surface-200 text-sm">
-                Sign in with your Google account to access your YouTube Music playlists.
-              </p>
-            </div>
-
-            <ConnectButton
-              service="youtube-music"
-              connected={auth.google.connected}
-              userName={auth.google.user?.name}
-              onConnect={auth.connectGoogle}
-              onDisconnect={auth.disconnectGoogle}
-            />
-          </div>
-        )}
-
-        {/* YouTube Music: Fetch & Select playlists */}
-        {step === "fetch-playlists" && (
-          <div className="space-y-6">
-            <div className="text-center animate-[fadeIn_0.3s_ease-out]">
-              <h2 className="text-2xl font-bold mb-2">Select playlists to migrate</h2>
-              <p className="text-surface-200 text-sm">
-                Choose which YouTube Music playlists to transfer to Tidal.
-              </p>
-            </div>
-
-            <PlaylistPicker onFetched={handleYouTubeFetched} />
-          </div>
-        )}
-
-        {/* Step 2: Select playlists (Spotify only) */}
+        {/* Select playlists */}
         {step === "select" && (
           <div className="space-y-6">
             <PlaylistPreview playlists={playlists} totalTracks={totalTracks} />
