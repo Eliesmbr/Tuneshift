@@ -14,7 +14,6 @@ import (
 
 const (
 	maxUploadSize = 50 << 20 // 50MB
-	maxFileCount  = 50
 )
 
 func (h *Handler) UploadCSV(w http.ResponseWriter, r *http.Request) {
@@ -28,10 +27,6 @@ func (h *Handler) UploadCSV(w http.ResponseWriter, r *http.Request) {
 	files := r.MultipartForm.File["files"]
 	if len(files) == 0 {
 		writeError(w, http.StatusBadRequest, "no files uploaded")
-		return
-	}
-	if len(files) > maxFileCount {
-		writeError(w, http.StatusBadRequest, "too many files (max 50)")
 		return
 	}
 
